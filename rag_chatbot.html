@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>정책자금 PDF RAG 챗봇</title>
+  <style>
+    :root {
+      --bg: #f6f3ee;
+      --panel: #ffffff;
+      --ink: #1f2528;
+      --muted: #657078;
+      --line: #d8d1c7;
+      --accent: #246b5f;
+      --accent-2: #b75d35;
+      --soft: #eaf3ef;
+      --warn: #fff2d7;
+      --shadow: 0 18px 55px rgba(29, 35, 38, 0.13);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(36,107,95,0.10), rgba(183,93,53,0.08) 42%, rgba(246,243,238,1) 100%),
+        var(--bg);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+    }
+
+    aside {
+      border-right: 1px solid var(--line);
+      padding: 22px;
+      background: rgba(255,255,255,0.62);
+      backdrop-filter: blur(12px);
+    }
+
+    main {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-width: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: white;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.25;
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 4px 0 0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .status-row span:first-child { color: var(--muted); }
+    .status-row span:last-child { font-weight: 650; text-align: right; }
+
+    .controls {
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: grid;
+      gap: 7px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .hint {
+      margin-top: 18px;
+      padding: 14px;
+      background: var(--warn);
+      border: 1px solid #ead8aa;
+      border-radius: 8px;
+      color: #5c4a26;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.72);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .topline h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .pill {
+      border: 1px solid #b8d6cc;
+      background: var(--soft);
+      color: #1f5b51;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .chat {
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 920px;
+      width: fit-content;
+      border-radius: 8px;
+      padding: 15px 16px;
+      line-height: 1.62;
+      white-space: pre-wrap;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 8px 24px rgba(29,35,38,0.06);
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #1f5b51;
+      color: white;
+      border-color: #1f5b51;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+    }
+
+    .sources {
+      align-self: flex-start;
+      width: min(920px, 100%);
+      display: grid;
+      gap: 8px;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.82);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .source-list {
+      border-top: 1px solid var(--line);
+      padding: 10px 12px;
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .source-item {
+      padding-bottom: 10px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .source-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .source-title {
+      color: var(--ink);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    form {
+      border-top: 1px solid var(--line);
+      padding: 18px 28px 22px;
+      background: rgba(255,255,255,0.80);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+    }
+
+    textarea {
+      min-height: 54px;
+      max-height: 160px;
+      resize: vertical;
+      width: 100%;
+      padding: 14px 15px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font: inherit;
+      line-height: 1.45;
+      color: var(--ink);
+      background: white;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(36,107,95,0.14);
+    }
+
+    button {
+      min-width: 92px;
+      height: 54px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-weight: 800;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.62;
+    }
+
+    .empty {
+      margin: auto;
+      max-width: 680px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .empty strong {
+      display: block;
+      color: var(--ink);
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      aside {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      main { height: auto; min-height: 72vh; }
+      form { grid-template-columns: 1fr; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="mark">R</div>
+        <div>
+          <h1>정책자금 RAG 챗봇</h1>
+          <p class="subtitle">Supabase 벡터DB 기반 Naive RAG</p>
+        </div>
+      </div>
+
+      <section class="status" id="status">
+        <div class="status-row"><span>서버</span><span id="health">확인 중</span></div>
+        <div class="status-row"><span>테이블</span><span id="tableName">-</span></div>
+        <div class="status-row"><span>LLM</span><span id="modelName">-</span></div>
+        <div class="status-row"><span>Rerank</span><span id="rerankState">-</span></div>
+      </section>
+
+      <section class="controls">
+        <label>
+          검색 후보 수 <strong id="vectorKValue">20</strong>
+          <input id="vectorK" type="range" min="5" max="40" step="1" value="20" />
+        </label>
+        <label>
+          최종 근거 수 <strong id="finalKValue">5</strong>
+          <input id="finalK" type="range" min="2" max="8" step="1" value="5" />
+        </label>
+      </section>
+
+      <div class="hint">
+        `.env` 키는 브라우저로 전달되지 않습니다. 이 화면은 로컬 서버에 질문만 보내고, 서버가 Supabase, Cohere, OpenRouter를 호출합니다.
+      </div>
+    </aside>
+
+    <main>
+      <header>
+        <div class="topline">
+          <h2>2026년 소상공인 정책자금 융자사업 공고</h2>
+          <span class="pill">실시간 스트리밍</span>
+        </div>
+      </header>
+
+      <section class="chat" id="chat">
+        <div class="empty" id="empty">
+          <strong>문서에 대해 질문해보세요</strong>
+          접수 시기, 융자 대상, 제외 업종, 자금별 한도와 금리처럼 PDF에 들어 있는 내용을 근거 기반으로 답합니다.
+        </div>
+      </section>
+
+      <form id="form">
+        <textarea id="message" placeholder="예: 2026년 소상공인 정책자금 접수 시기와 신청 방법을 알려줘" required></textarea>
+        <button id="send" type="submit">전송</button>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const chat = document.querySelector("#chat");
+    const empty = document.querySelector("#empty");
+    const form = document.querySelector("#form");
+    const messageInput = document.querySelector("#message");
+    const sendButton = document.querySelector("#send");
+    const vectorK = document.querySelector("#vectorK");
+    const finalK = document.querySelector("#finalK");
+    const vectorKValue = document.querySelector("#vectorKValue");
+    const finalKValue = document.querySelector("#finalKValue");
+
+    vectorK.addEventListener("input", () => vectorKValue.textContent = vectorK.value);
+    finalK.addEventListener("input", () => finalKValue.textContent = finalK.value);
+
+    function addMessage(role, text = "") {
+      empty?.remove();
+      const el = document.createElement("div");
+      el.className = `message ${role}`;
+      el.textContent = text;
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+      return el;
+    }
+
+    function renderSources(sources) {
+      const wrap = document.createElement("div");
+      wrap.className = "sources";
+      const details = document.createElement("details");
+      details.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = `검색 근거 ${sources.length}개`;
+      const list = document.createElement("div");
+      list.className = "source-list";
+
+      sources.forEach((source) => {
+        const item = document.createElement("div");
+        item.className = "source-item";
+        const score = source.rerank_score != null
+          ? `rerank ${Number(source.rerank_score).toFixed(4)}`
+          : `similarity ${Number(source.similarity || 0).toFixed(4)}`;
+        item.innerHTML = `
+          <div class="source-title">[Source ${source.rank}] page ${source.page ?? "-"} · ${source.section ?? "-"} · ${score}</div>
+          <div>${escapeHtml(source.preview || "")}</div>
+        `;
+        list.appendChild(item);
+      });
+
+      details.appendChild(summary);
+      details.appendChild(list);
+      wrap.appendChild(details);
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function loadHealth() {
+      try {
+        const res = await fetch("/health");
+        const data = await res.json();
+        document.querySelector("#health").textContent = data.ok ? "연결됨" : "오류";
+        document.querySelector("#tableName").textContent = data.table;
+        document.querySelector("#modelName").textContent = data.openrouter_model;
+        document.querySelector("#rerankState").textContent = data.cohere_rerank ? "Cohere 사용" : "비활성";
+      } catch (error) {
+        document.querySelector("#health").textContent = "실패";
+      }
+    }
+
+    async function ask(message) {
+      addMessage("user", message);
+      const assistant = addMessage("assistant", "");
+      sendButton.disabled = true;
+      messageInput.disabled = true;
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            vector_k: Number(vectorK.value),
+            final_k: Number(finalK.value)
+          })
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+          for (const event of events) {
+            const line = event.split("\n").find((part) => part.startsWith("data: "));
+            if (!line) continue;
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "sources") {
+              renderSources(data.sources || []);
+            } else if (data.type === "delta") {
+              assistant.textContent += data.text || "";
+              chat.scrollTop = chat.scrollHeight;
+            } else if (data.type === "error") {
+              assistant.textContent += `\n\n오류: ${data.message}`;
+            }
+          }
+        }
+      } catch (error) {
+        assistant.textContent += `오류가 발생했습니다: ${error.message}`;
+      } finally {
+        sendButton.disabled = false;
+        messageInput.disabled = false;
+        messageInput.focus();
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = messageInput.value.trim();
+      if (!message) return;
+      messageInput.value = "";
+      ask(message);
+    });
+
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    loadHealth();
+  </script>
+</body>
+</html>
